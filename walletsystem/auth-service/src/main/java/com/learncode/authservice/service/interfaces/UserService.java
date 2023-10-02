@@ -1,19 +1,21 @@
 package com.learncode.authservice.service.interfaces;
 
-import com.learncode.authservice.entity.User;
+import com.learncode.authservice.request.SignupRequest;
+import com.learncode.authservice.request.UserUpdateRequest;
+import com.learncode.authservice.response.UserResponse;
 
 import java.util.List;
 
 public interface UserService {
-    User createUser(User user);
+    UserResponse createUser(SignupRequest signupRequest);
 
-    User updateUser(Long userId, User user);
+    UserResponse updateUser(Long userId, UserUpdateRequest user);
 
     void deleteUser(Long userId);
 
-    User getUserById(Long userId);
+    UserResponse getUserById(Long userId);
 
-    User getUserByUsername(String username);
+    UserResponse getUserByUsername(String username);
 
-    List<User> getAllUsers();
+    List<UserResponse> getAllUsers();
 }

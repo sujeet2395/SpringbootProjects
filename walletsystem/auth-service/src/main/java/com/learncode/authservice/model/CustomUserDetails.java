@@ -14,43 +14,38 @@ public class CustomUserDetails implements UserDetails {
         this.user = user;
     }
 
-    // Implement UserDetails methods
-    // ...
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Implement method if you are using roles/authorities
-
-        return ;
+        return this.user.getRoles();
     }
 
     @Override
     public String getPassword() {
-        return null;
+        return this.user.getPassword();
     }
 
     @Override
     public String getUsername() {
-        return null;
+        return this.user.getUsername();
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        return false;
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return false;
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return false;
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return false;
+        return true;
     }
 }
