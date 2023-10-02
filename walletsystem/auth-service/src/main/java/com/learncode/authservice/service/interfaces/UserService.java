@@ -1,7 +1,6 @@
 package com.learncode.authservice.service.interfaces;
 
-import com.learncode.authservice.request.SignupRequest;
-import com.learncode.authservice.request.UserUpdateRequest;
+import com.learncode.authservice.request.*;
 import com.learncode.authservice.response.UserResponse;
 
 import java.util.List;
@@ -18,4 +17,10 @@ public interface UserService {
     UserResponse getUserByUsername(String username);
 
     List<UserResponse> getAllUsers();
+
+    void changePassword(ChangePasswordRequest passwordChangeRequest);
+
+    void changePasswordWithOtp(ChangePasswordWithOtpRequest changePasswordWithOtpRequest);
+
+    void resetPassword(ResetPasswordRequest resetPasswordRequest);
 }

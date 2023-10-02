@@ -1,11 +1,11 @@
 package com.learncode.authservice.controller;
 
-import com.learncode.authservice.request.SignupRequest;
-import com.learncode.authservice.request.UserUpdateRequest;
+import com.learncode.authservice.request.*;
 import com.learncode.authservice.service.interfaces.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -100,12 +100,17 @@ public class UserController {
     }
 
     @PutMapping("/user/{userId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> updateUser(@PathVariable Long userId, @RequestBody UserUpdateRequest userUpdateRequest) {
         Map<String, Object> response = new HashMap<>();
         try{
             response.put("data",userService.updateUser(userId, userUpdateRequest));
             response.put("success",true);
+        }catch (AccessDeniedException e)
+        {
+            response.put("exception",e.getMessage());
+            response.put("success",false);
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.FORBIDDEN);
         }catch (Exception e)
         {
             response.put("exception",e.getMessage());
@@ -116,12 +121,76 @@ public class UserController {
     }
 
     @DeleteMapping("/user/{userId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Long userId) {
         Map<String, Object> response = new HashMap<>();
         try{
             userService.deleteUser(userId);
-            response.put("data","User is deleted successfully.");
+            response.put("data","User deleted successfully.");
+            response.put("success",true);
+        }catch (AccessDeniedException e)
+        {
+            response.put("exception",e.getMessage());
+            response.put("success",false);
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.FORBIDDEN);
+        }catch (Exception e)
+        {
+            response.put("exception",e.getMessage());
+            response.put("success",false);
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/user/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> changePassword(@RequestBody ChangePasswordRequest changePasswordRequest) {
+        Map<String, Object> response = new HashMap<>();
+        try{
+            userService.changePassword(changePasswordRequest);
+            response.put("data","Password changed successfully.");
+            response.put("success",true);
+        }catch (AccessDeniedException e)
+        {
+            response.put("exception",e.getMessage());
+            response.put("success",false);
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.FORBIDDEN);
+        }catch (Exception e)
+        {
+            response.put("exception",e.getMessage());
+            response.put("success",false);
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/user/change-password-with-otp")
+    public ResponseEntity<Map<String, Object>> changePasswordWithOtp(@RequestBody ChangePasswordWithOtpRequest changePasswordWithOtpRequest) {
+        Map<String, Object> response = new HashMap<>();
+        try{
+            userService.changePasswordWithOtp(changePasswordWithOtpRequest);
+            response.put("data","Password reset successfully.");
+            response.put("success",true);
+        }catch (AccessDeniedException e)
+        {
+            response.put("exception",e.getMessage());
+            response.put("success",false);
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.FORBIDDEN);
+        }catch (Exception e)
+        {
+            response.put("exception",e.getMessage());
+            response.put("success",false);
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/user/reset-password")
+    public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest) {
+        Map<String, Object> response = new HashMap<>();
+        try{
+            userService.resetPassword(resetPasswordRequest);
+            response.put("data","An email containing OTP sent to your email. Please follow further instruction.");
             response.put("success",true);
         }catch (Exception e)
         {
@@ -131,6 +200,7 @@ public class UserController {
         }
         return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
     }
+
     @PostMapping("/transfer")
     public ResponseEntity<Map<String, Object>> transferFunds(
             @RequestParam Long senderUserId,

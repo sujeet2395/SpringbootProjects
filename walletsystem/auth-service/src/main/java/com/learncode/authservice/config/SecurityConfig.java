@@ -39,20 +39,21 @@ public class SecurityConfig {
     public UserDetailsService userDetailsService() {
         return new CustomUserDetailsServiceImpl();
     }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(authorize -> authorize.requestMatchers(HttpMethod.POST, "/api/v1/auth/user/signup", "/api/v1/auth/login", "/api/v1/auth/reset-password", "/api/v1/auth/logout").permitAll()
-                        .requestMatchers("/api/v1/auth/welcome").permitAll()
+                .authorizeHttpRequests(authorize -> authorize.requestMatchers(HttpMethod.POST, "/api/v1/auth/user/signup", "/api/v1/auth/user/change-password-with-otp", "/api/v1/auth/user/reset-password", "/api/v1/auth/user/logout").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/auth/welcome").permitAll()
                         .anyRequest().authenticated())
                 .addFilter(new BasicAuthenticationFilter(authenticationManager()))
                 .exceptionHandling(exception -> exception.accessDeniedHandler(customAccessDeniedHandler)
                         .authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session-> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .logout(logout -> logout
-                        .logoutUrl("/api/v1/auth/logout")
-                        .logoutRequestMatcher(new AntPathRequestMatcher("/api/v1/auth/logout", HttpMethod.POST.name()))
+                        .logoutUrl("/api/v1/auth/user/logout")
+                        .logoutRequestMatcher(new AntPathRequestMatcher("/api/v1/auth/user/logout", HttpMethod.POST.name()))
                         .logoutSuccessHandler((request, response, authentication) -> SecurityContextHolder.clearContext()));
         return http.build();
     }
@@ -69,6 +70,7 @@ public class SecurityConfig {
         authenticationProvider.setPasswordEncoder(passwordEncoder());
         return authenticationProvider;
     }
+
     @Bean
     public AuthenticationManager authenticationManager() {
         return new ProviderManager(authenticationProvider());

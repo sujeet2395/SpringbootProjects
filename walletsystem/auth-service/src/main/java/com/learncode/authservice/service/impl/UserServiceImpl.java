@@ -1,21 +1,29 @@
 package com.learncode.authservice.service.impl;
 
+import com.learncode.authservice.apiconstant.Constant;
+import com.learncode.authservice.entity.PasswordResetOtp;
 import com.learncode.authservice.entity.Role;
 import com.learncode.authservice.entity.User;
 import com.learncode.authservice.exception.ResourceNotFoundException;
+import com.learncode.authservice.repository.PasswordResetOtpRepository;
 import com.learncode.authservice.repository.RoleRepository;
 import com.learncode.authservice.repository.UserRepository;
-import com.learncode.authservice.request.SignupRequest;
-import com.learncode.authservice.request.UserUpdateRequest;
+import com.learncode.authservice.request.*;
 import com.learncode.authservice.response.UserResponse;
 import com.learncode.authservice.service.interfaces.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -28,6 +36,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private PasswordResetOtpRepository passwordResetOtpRepository;
 
     @Value("${auth.user.admin.create}")
     private boolean isCreateAdmin;
@@ -53,6 +64,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse updateUser(Long userId, UserUpdateRequest userUpdateRequest) {
         User userInstanceFromDB = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        UserDetails authUserDetails = getAuthenticatedUser();
+        if(Objects.isNull(authUserDetails) || (authUserDetails.getAuthorities().contains(Role.builder().role("ROLE_USER").build()) && !(authUserDetails.getUsername().equals(userInstanceFromDB.getUsername())))) {
+            throw new AccessDeniedException("Forbidden: Access Denied.");
+        }
         if(Objects.nonNull(userUpdateRequest.getUsername()) && !userUpdateRequest.getUsername().isEmpty() && !userInstanceFromDB.getUsername().equalsIgnoreCase(userUpdateRequest.getUsername()))
         {
             checkUsernameExist(userUpdateRequest.getUsername());
@@ -68,21 +83,23 @@ public class UserServiceImpl implements UserService {
     }
 
     private void checkEmailExist(String email) {
-        if(userRepository.existsByEmail(email))
+        if(userRepository.existsByEmailIgnoreCase(email))
             throw new RuntimeException("Email is not available.");
     }
 
     private void checkUsernameExist(String username) {
-        if(userRepository.existsByUsername(username))
+        if(userRepository.existsByUsernameIgnoreCase(username))
             throw new RuntimeException("Username is not available.");
     }
 
     @Override
     public void deleteUser(Long userId) {
-        if(userRepository.existsById(userId))
-            userRepository.deleteById(userId);
-        else
-            throw new ResourceNotFoundException("User not found by userId: "+userId);
+        User userInstanceFromDB = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        UserDetails authUserDetails = getAuthenticatedUser();
+        if(Objects.isNull(authUserDetails) || (authUserDetails.getAuthorities().contains(Role.builder().role("ROLE_USER").build()) && !(authUserDetails.getUsername().equals(userInstanceFromDB.getUsername())))) {
+            throw new AccessDeniedException("Forbidden: Access Denied.");
+        }
+        userRepository.deleteById(userId);
     }
 
     @Override
@@ -102,11 +119,62 @@ public class UserServiceImpl implements UserService {
          return userRepository.findAll().stream().map(this::mapUserToUserResponse).toList();
     }
 
+    @Override
+    public void changePassword(ChangePasswordRequest passwordChangeRequest) {
+        User userInstanceFromDB = userRepository.findByUsername(passwordChangeRequest.getUsername()).orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + passwordChangeRequest.getUsername()));
+        UserDetails authUserDetails = getAuthenticatedUser();
+        if(Objects.isNull(authUserDetails) || !(authUserDetails.getUsername().equals(userInstanceFromDB.getUsername()))) {
+            throw new AccessDeniedException("Forbidden: Access Denied.");
+        }
+        if(passwordEncoder.matches(passwordChangeRequest.getOldPassword(), userInstanceFromDB.getPassword())) {
+            userInstanceFromDB.setPassword(passwordEncoder.encode(passwordChangeRequest.getNewPassword()));
+            userRepository.save(userInstanceFromDB);
+        }else{
+            throw new RuntimeException("Invalid credential.");
+        }
+    }
+
+    @Override
+    public void changePasswordWithOtp(ChangePasswordWithOtpRequest changePasswordWithOtpRequest) {
+        PasswordResetOtp passwordResetOtp = passwordResetOtpRepository.findByOtp(changePasswordWithOtpRequest.getOtp()).orElseThrow(() -> new ResourceNotFoundException("OTP is Invalid."));
+        if(passwordResetOtp.isExpired())
+            throw new RuntimeException("The OTP has expired. Please try again by resetting your password.");
+        User userInstanceFromDB = userRepository.findByUsername(changePasswordWithOtpRequest.getUsername()).orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + changePasswordWithOtpRequest.getUsername()));
+        if(!userInstanceFromDB.getId().equals(passwordResetOtp.getUser().getId())) {
+            throw new AccessDeniedException("Forbidden: Access Denied.");
+        }
+        userInstanceFromDB.setPassword(passwordEncoder.encode(changePasswordWithOtpRequest.getNewPassword()));
+        userRepository.save(userInstanceFromDB);
+        passwordResetOtpRepository.deleteById(passwordResetOtp.getId());
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest resetPasswordRequest) {
+        String otp = generateRandomOtp();
+        User user = userRepository.findByEmailIgnoreCase(resetPasswordRequest.getEmail()).orElseThrow(() -> new ResourceNotFoundException("User not found with email: "+resetPasswordRequest.getEmail()));
+        PasswordResetOtp passwordResetOtp = new PasswordResetOtp(LocalDateTime.now().plusMinutes(10), otp,  user);
+        passwordResetOtpRepository.save(passwordResetOtp);
+    }
+
+    private String generateRandomOtp() {
+        int min = (int) Math.pow(10, Constant.OTP_LENGTH - 1);
+        int max = (int) Math.pow(10, Constant.OTP_LENGTH) - 1;
+        int randomInt = new Random().nextInt(max - min + 1) + min;
+        return String.format("%0" + Constant.OTP_LENGTH + "d", randomInt);
+    }
     private UserResponse mapUserToUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .roles(user.getRoles().stream().map(Role::getRole).toList()).build();
+    }
+
+    private UserDetails getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            return (UserDetails) authentication.getPrincipal();
+        }
+        return null;
     }
 }
