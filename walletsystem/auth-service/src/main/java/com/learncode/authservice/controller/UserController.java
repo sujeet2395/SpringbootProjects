@@ -1,7 +1,10 @@
 package com.learncode.authservice.controller;
 
 import com.learncode.authservice.request.*;
+import com.learncode.authservice.service.interfaces.EmailService;
 import com.learncode.authservice.service.interfaces.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,8 +19,13 @@ import java.util.Map;
 @RequestMapping("/api/v1/auth")
 public class UserController {
 
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private EmailService emailService;
 
     @GetMapping("/welcome")
     public String welcome() {
@@ -100,7 +108,6 @@ public class UserController {
     }
 
     @PutMapping("/user/{userId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> updateUser(@PathVariable Long userId, @RequestBody UserUpdateRequest userUpdateRequest) {
         Map<String, Object> response = new HashMap<>();
         try{
@@ -121,7 +128,6 @@ public class UserController {
     }
 
     @DeleteMapping("/user/{userId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Long userId) {
         Map<String, Object> response = new HashMap<>();
         try{
@@ -143,7 +149,6 @@ public class UserController {
     }
 
     @PostMapping("/user/change-password")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> changePassword(@RequestBody ChangePasswordRequest changePasswordRequest) {
         Map<String, Object> response = new HashMap<>();
         try{
@@ -199,6 +204,21 @@ public class UserController {
             return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/send-mail")
+    public ResponseEntity<Map<String, String>> sendEmail(@RequestBody EmailMessage emailMessage) {
+        Map<String, String> response = new HashMap<>();
+        try {
+            log.info("Sending emailMessage body: {}", emailMessage);
+            emailService.sendMail(emailMessage);
+            response.put("Success", "Email sent successfully.");
+        } catch (Exception ex) {
+            log.info("Exception Occurred :- " + ex.getMessage());
+            response.put("exception", ex.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @PostMapping("/transfer")
