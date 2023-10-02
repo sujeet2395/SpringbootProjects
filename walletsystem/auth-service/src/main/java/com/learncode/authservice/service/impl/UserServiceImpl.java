@@ -10,6 +10,7 @@ import com.learncode.authservice.repository.RoleRepository;
 import com.learncode.authservice.repository.UserRepository;
 import com.learncode.authservice.request.*;
 import com.learncode.authservice.response.UserResponse;
+import com.learncode.authservice.service.interfaces.EmailService;
 import com.learncode.authservice.service.interfaces.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +41,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private PasswordResetOtpRepository passwordResetOtpRepository;
 
+    @Autowired
+    EmailService emailService;
+
     @Value("${auth.user.admin.create}")
     private boolean isCreateAdmin;
 
@@ -57,7 +61,14 @@ public class UserServiceImpl implements UserService {
         role.setUsers(List.of(user));
         List<Role> roles = List.of(role);
         user.setRoles(roles);
+        EmailMessage emailMessage = EmailMessage.builder()
+                .to(user.getEmail())
+                .subject(Constant.NEW_USER_SUBJECT)
+                .mailBody(Constant.getNewUserMailBody(user.getUsername(),user.getEmail()))
+                .build();
         User savedUser = userRepository.save(user);
+        EmailThreadServiceImpl emailThreadService = new EmailThreadServiceImpl(emailService, emailMessage);
+        emailThreadService.start();
         return mapUserToUserResponse(savedUser);
     }
 
@@ -153,7 +164,14 @@ public class UserServiceImpl implements UserService {
         String otp = generateRandomOtp();
         User user = userRepository.findByEmailIgnoreCase(resetPasswordRequest.getEmail()).orElseThrow(() -> new ResourceNotFoundException("User not found with email: "+resetPasswordRequest.getEmail()));
         PasswordResetOtp passwordResetOtp = new PasswordResetOtp(LocalDateTime.now().plusMinutes(10), otp,  user);
+        EmailMessage emailMessage = EmailMessage.builder()
+                .to(user.getEmail())
+                .subject(Constant.RESET_PASSWORD_SUBJECT)
+                .mailBody(Constant.getResetPasswordMailBody(user.getUsername(),otp))
+                .build();
         passwordResetOtpRepository.save(passwordResetOtp);
+        EmailThreadServiceImpl emailThreadService = new EmailThreadServiceImpl(emailService, emailMessage);
+        emailThreadService.start();
     }
 
     private String generateRandomOtp() {
