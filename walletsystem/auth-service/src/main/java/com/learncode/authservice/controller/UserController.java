@@ -19,7 +19,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/auth")
 public class UserController {
 
-    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     @Autowired
     private UserService userService;
@@ -207,35 +207,19 @@ public class UserController {
     }
 
     @PostMapping("/send-mail")
-    public ResponseEntity<Map<String, String>> sendEmail(@RequestBody EmailMessage emailMessage) {
-        Map<String, String> response = new HashMap<>();
+    public ResponseEntity<Map<String, Object>> sendEmail(@RequestBody EmailMessage emailMessage) {
+        Map<String, Object> response = new HashMap<>();
         try {
             log.info("Sending emailMessage body: {}", emailMessage);
             emailService.sendMail(emailMessage);
-            response.put("Success", "Email sent successfully.");
+            response.put("data","Email sent successfully.");
+            response.put("success",true);
         } catch (Exception ex) {
             log.info("Exception Occurred :- " + ex.getMessage());
+            response.put("success",false);
             response.put("exception", ex.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return new ResponseEntity<>(response, HttpStatus.OK);
-    }
-
-    @PostMapping("/transfer")
-    public ResponseEntity<Map<String, Object>> transferFunds(
-            @RequestParam Long senderUserId,
-            @RequestParam Long receiverUserId,
-            @RequestParam double amount) {
-        Map<String, Object> response = new HashMap<>();
-        try{
-            response.put("data","Funds transferred successfully");
-            response.put("success",true);
-        }catch (Exception e)
-        {
-            response.put("exception",e.getMessage());
-            response.put("success",false);
-            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-        return new ResponseEntity<Map<String, Object>>(response, HttpStatus.CREATED);
     }
 }
