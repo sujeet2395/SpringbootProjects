@@ -29,15 +29,15 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public TransactionResponse updateTransaction(String transactionId, UpdateTransactionRequest updateTransactionRequest) {
-        Transaction existingTransaction = transactionRepository.findByTransactionId(transactionId).orElseThrow(() -> new ResourceNotFoundException("Transaction is not found."));
-        if (Objects.nonNull(existingTransaction)) {
-            if(existingTransaction.getTransactionStatus().equals(TransactionStatus.NEW) && updateTransactionRequest.getTransactionStatus().equals(TransactionStatus.PENDING))
-                existingTransaction.setTransactionStatus(updateTransactionRequest.getTransactionStatus());
-            else if(existingTransaction.getTransactionStatus().equals(TransactionStatus.PENDING) && (updateTransactionRequest.getTransactionStatus().equals(TransactionStatus.SUCCESS) || updateTransactionRequest.getTransactionStatus().equals(TransactionStatus.FAILED) || updateTransactionRequest.getTransactionStatus().equals(TransactionStatus.CANCELLED)))
-                existingTransaction.setTransactionStatus(updateTransactionRequest.getTransactionStatus());
+        Transaction transactionInstanceFromDB = transactionRepository.findByTransactionId(transactionId).orElseThrow(() -> new ResourceNotFoundException("Transaction is not found."));
+        if (Objects.nonNull(transactionInstanceFromDB)) {
+            if(transactionInstanceFromDB.getTransactionStatus().equals(TransactionStatus.NEW) && updateTransactionRequest.getTransactionStatus().equals(TransactionStatus.PENDING))
+                transactionInstanceFromDB.setTransactionStatus(updateTransactionRequest.getTransactionStatus());
+            else if(transactionInstanceFromDB.getTransactionStatus().equals(TransactionStatus.PENDING) && (updateTransactionRequest.getTransactionStatus().equals(TransactionStatus.SUCCESS) || updateTransactionRequest.getTransactionStatus().equals(TransactionStatus.FAILED) || updateTransactionRequest.getTransactionStatus().equals(TransactionStatus.CANCELLED)))
+                transactionInstanceFromDB.setTransactionStatus(updateTransactionRequest.getTransactionStatus());
             else
                 throw new IllegalStateException("Illegal Transaction Status");
-            return this.mapTransactionToTransactionResponse(transactionRepository.save(existingTransaction));
+            return this.mapTransactionToTransactionResponse(transactionRepository.save(transactionInstanceFromDB));
         }
         return null;
     }
