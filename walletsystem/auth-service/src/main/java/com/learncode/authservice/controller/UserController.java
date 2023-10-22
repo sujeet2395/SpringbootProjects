@@ -1,8 +1,10 @@
 package com.learncode.authservice.controller;
 
 import com.learncode.authservice.request.*;
+import com.learncode.authservice.response.ConnValidatedResponse;
 import com.learncode.authservice.service.interfaces.EmailService;
 import com.learncode.authservice.service.interfaces.UserService;
+import org.apache.hc.core5.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -32,13 +35,13 @@ private static final Logger log = LoggerFactory.getLogger(UserController.class);
         return "Welcome this endpoint is not secure";
     }
 
-    @GetMapping("/user/userProfile")
+    @GetMapping("/user/user-profile")
     @PreAuthorize("hasAuthority('ROLE_USER')")
     public String userProfile() {
         return "Welcome to User Profile";
     }
 
-    @GetMapping("/admin/adminProfile")
+    @GetMapping("/admin/admin-profile")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String adminProfile() {
         return "Welcome to Admin Profile";
@@ -75,7 +78,7 @@ private static final Logger log = LoggerFactory.getLogger(UserController.class);
         return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
     }
 
-    @GetMapping("/user/{username}")
+    @GetMapping("/user/by-username/{username}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Map<String, Object>> getUserByUsername(@PathVariable String username) {
         Map<String, Object> response = new HashMap<>();
@@ -221,5 +224,16 @@ private static final Logger log = LoggerFactory.getLogger(UserController.class);
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/user/validate-token")
+    public ResponseEntity<ConnValidatedResponse> validateToken(Authentication authentication)
+    {
+        ConnValidatedResponse connValidatedResponse = new ConnValidatedResponse();
+        connValidatedResponse.setHttpStatus(HttpStatus.OK.value());
+        connValidatedResponse.setAuthenticated(true);
+        connValidatedResponse.setMethodType(Method.GET.name());
+        connValidatedResponse.setUsername(authentication.getName());
+        return new ResponseEntity<ConnValidatedResponse>(connValidatedResponse,HttpStatus.OK);
     }
 }

@@ -6,6 +6,7 @@ import com.learncode.authservice.response.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -35,7 +36,7 @@ public class AuthEntryPointHandler implements AuthenticationEntryPoint {
 
 	  ErrorResponse errorResponse = new ErrorResponse();
 	  errorResponse.setHttpStatus(HttpServletResponse.SC_UNAUTHORIZED);
-	  errorResponse.setError("Unauthorized");
+	  errorResponse.setError(HttpStatus.UNAUTHORIZED.getReasonPhrase());
 	  errorResponse.setMessage("You are not authenticated.");//authException.getMessage()
 	  errorResponse.setPath(request.getServletPath());
 
