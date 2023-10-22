@@ -49,7 +49,7 @@ public class WalletServiceImpl implements WalletService {
         if(!walletInstanceFromDB.getActive())
             throw new RuntimeException("Wallet is inactive.");
         if(Objects.nonNull(addMoneyIntoWalletRequest.getAmount()) && addMoneyIntoWalletRequest.getAmount()>=0d)
-            walletInstanceFromDB.setAmount(addMoneyIntoWalletRequest.getAmount());
+            walletInstanceFromDB.setAmount(walletInstanceFromDB.getAmount()+addMoneyIntoWalletRequest.getAmount());
         return this.mapWalletToWalletResponse(walletRepository.save(walletInstanceFromDB));
     }
 
