@@ -3,6 +3,7 @@ package com.learncode.authservice.controller;
 import com.learncode.authservice.request.*;
 import com.learncode.authservice.response.ConnValidatedResponse;
 import com.learncode.authservice.service.interfaces.EmailService;
+import com.learncode.authservice.service.interfaces.KafkaService;
 import com.learncode.authservice.service.interfaces.UserService;
 import org.apache.hc.core5.http.Method;
 import org.slf4j.Logger;
@@ -29,6 +30,9 @@ private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private KafkaService kafkaService;
 
     @GetMapping("/welcome")
     public String welcome() {
@@ -235,5 +239,22 @@ private static final Logger log = LoggerFactory.getLogger(UserController.class);
         connValidatedResponse.setMethodType(Method.GET.name());
         connValidatedResponse.setUsername(authentication.getName());
         return new ResponseEntity<ConnValidatedResponse>(connValidatedResponse,HttpStatus.OK);
+    }
+
+    @PostMapping("/produce")
+    public ResponseEntity<Map<String, Object>> produceMessage(@RequestBody Message message) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            log.info("publishing message body: {}", message);
+            kafkaService.publish(message);
+            response.put("data","message queued successfully.");
+            response.put("success",true);
+        } catch (Exception ex) {
+            log.info("Exception Occurred :- " + ex.getMessage());
+            response.put("success",false);
+            response.put("exception", ex.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }
